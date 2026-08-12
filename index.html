@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <title>Gestión de Notificaciones — Sindicato de la Carne</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+    <meta name="description" content="Panel de administración de notificaciones y alertas de novedades."/>
+    <link rel="icon" type="image/png" href="logo.png"/>
+    <link rel="apple-touch-icon" href="logo.png"/>
+    
+    <!-- Google Fonts & Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet"/>
+    
+    <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+
+    <div class="app-wrapper">
+        <!-- Top wave decoration -->
+        <div class="wave-container">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="wave-svg">
+                <path d="M0,0 L100,0 L100,60 Q50,105 0,60 Z"/>
+            </svg>
+            <div class="logo-circle">
+                <img src="logo.png" alt="Sindicato de la Carne Logo"/>
+            </div>
+        </div>
+
+        <!-- Main Card Container -->
+        <main class="main-card">
+            <header class="card-header">
+                <div class="header-icon-badge">
+                    <span class="material-symbols-outlined">notifications_active</span>
+                </div>
+                <h1 class="title-h1">Gestión de Notificaciones</h1>
+                <p class="subtitle-text">Active o desactive el indicador de novedades para todos los afiliados.</p>
+            </header>
+
+            <!-- Backend Status Warning (visible only if backend URL is empty) -->
+            <div id="backend-warning" class="warning-banner" style="display: none;">
+                <span class="material-symbols-outlined warning-icon">info</span>
+                <div class="warning-content">
+                    <strong>Backend en preparación (Etapa 3)</strong>
+                    <p>La interfaz se encuentra en modo vista previa hasta conectar la URL del nuevo backend.</p>
+                </div>
+            </div>
+
+            <!-- Switch Container Control -->
+            <div class="control-card">
+                <div class="switch-row">
+                    <div class="switch-label-group">
+                        <span class="label-title">Aviso de Novedades</span>
+                        <span class="label-desc">Muestra un aviso visual en la app</span>
+                    </div>
+
+                    <!-- Custom iOS-style Switch -->
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="notification-switch" onchange="handleSwitchToggle(event)" disabled/>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="status-divider"></div>
+
+                <!-- Status Visual Indicator -->
+                <div class="status-indicator-box">
+                    <div id="status-pill" class="status-pill state-off">
+                        <span id="status-icon" class="material-symbols-outlined">notifications_off</span>
+                        <span id="status-text">Notificaciones desactivadas</span>
+                    </div>
+                    <p id="status-subtext" class="status-subtext">El indicador visual de novedades estará oculto para los afiliados.</p>
+                </div>
+            </div>
+
+            <!-- Metadata info panel -->
+            <div class="meta-panel">
+                <div class="meta-item">
+                    <span class="meta-label">ID de Notificación:</span>
+                    <span id="meta-id" class="meta-value">--</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Última actualización:</span>
+                    <span id="meta-updated" class="meta-value">--</span>
+                </div>
+            </div>
+
+            <!-- Loading overlay inside card -->
+            <div id="card-loader" class="card-loader" style="display: none;">
+                <div class="spinner"></div>
+                <span>Actualizando estado...</span>
+            </div>
+
+            <footer class="card-footer">
+                <p>Sindicato de la Carne — Colón</p>
+                <p class="small-hint">Panel de Administración de Notificaciones</p>
+            </footer>
+        </main>
+    </div>
+
+    <!-- TOAST / SNACKBAR NOTIFICATION -->
+    <div id="toast" class="toast">
+        <span id="toast-icon" class="material-symbols-outlined">info</span>
+        <span id="toast-message">Cargando estado...</span>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
