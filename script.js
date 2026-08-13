@@ -8,7 +8,7 @@
  *  Esta constante se completará en la Etapa 3 cuando se cree
  *  el nuevo Google Apps Script independiente para Notificaciones.
  */
-const NOTIFICATION_API_URL = ''; // Pendiente de configurar en Etapa 3
+const NOTIFICATION_API_URL = 'https://script.google.com/macros/s/AKfycbwGF4TrGZlVA1F3SaYkG91AqpW2XcTZqWGXSbRzUqoY742uqWpq2foyEMLNmY9IKgvI/exec';
 
 // Estado local interactivo / demo
 let currentState = {
@@ -59,15 +59,15 @@ async function fetchNotificationState() {
         if (data.success) {
             currentState.enabled = Boolean(data.enabled);
             currentState.notificationId = data.notificationId || 0;
-            currentState.updatedAt = data.updatedAt || new Date().toLocaleString('es-AR');
+            currentState.updatedAt = formatTimestamp(data.updatedAt);
             
             updateUI(currentState.enabled, currentState.notificationId, currentState.updatedAt);
         } else {
-            showToast(data.message || 'Error al obtener estado', 'error');
+            showToast(data.message || data.error || 'No se pudo obtener el estado del servidor', 'error');
         }
     } catch (err) {
         console.error('[Notificaciones] Error al consultar backend:', err);
-        showToast('Error de conexión con el backend de notificaciones', 'error');
+        showToast('No se pudo conectar con el servidor. El estado no fue modificado.', 'error');
     } finally {
         showLoader(false);
         switchEl.disabled = false;
@@ -88,7 +88,7 @@ async function handleSwitchToggle(event) {
             // Cada nueva activación genera un nuevo ID
             currentState.notificationId += 1;
         }
-        currentState.updatedAt = new Date().toLocaleDateString('es-AR') + ' ' + new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+        currentState.updatedAt = formatTimestamp(new Date().toISOString());
         
         updateUI(currentState.enabled, currentState.notificationId, currentState.updatedAt);
         showToast(targetState ? 'Notificaciones activadas (Demo)' : 'Notificaciones desactivadas (Demo)', 'info');
@@ -112,22 +112,38 @@ async function handleSwitchToggle(event) {
         if (data.success) {
             currentState.enabled = Boolean(data.enabled);
             currentState.notificationId = data.notificationId;
-            currentState.updatedAt = data.updatedAt || new Date().toLocaleString('es-AR');
+            currentState.updatedAt = formatTimestamp(data.updatedAt);
 
             updateUI(currentState.enabled, currentState.notificationId, currentState.updatedAt);
             showToast(currentState.enabled ? 'Notificaciones activadas correctamente' : 'Notificaciones desactivadas', 'info');
         } else {
             // Revertir switch si el servidor rechazó la solicitud
             event.target.checked = !targetState;
-            showToast(data.message || 'No se pudo guardar el cambio', 'error');
+            showToast(data.message || data.error || 'No se pudo guardar el cambio', 'error');
         }
     } catch (err) {
         console.error('[Notificaciones] Error al actualizar estado:', err);
         event.target.checked = !targetState;
-        showToast('Error de conexión al intentar guardar', 'error');
+        showToast('No se pudo conectar con el servidor. El estado no fue modificado.', 'error');
     } finally {
         showLoader(false);
         switchEl.disabled = false;
+    }
+}
+
+function formatTimestamp(raw) {
+    if (!raw) return '--';
+    try {
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return String(raw);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${day}/${month}/${year} ${hours}:${minutes}`;
+    } catch (_) {
+        return String(raw);
     }
 }
 
