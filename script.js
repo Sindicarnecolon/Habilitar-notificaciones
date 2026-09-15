@@ -43,14 +43,43 @@ async function initApp() {
 }
 
 /**
+ * Helper para peticiones con límite de tiempo (timeout) y manejo de cancelaciones
+ */
+async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        return response;
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+
+/**
  * Consulta el estado actual desde el backend de Google Apps Script
  */
 async function fetchNotificationState() {
-    showLoader(true);
     const switchEl = document.getElementById('notification-switch');
+    const pill = document.getElementById('status-pill');
+    const icon = document.getElementById('status-icon');
+    const text = document.getElementById('status-text');
+    const subtext = document.getElementById('status-subtext');
+
+    // Estado inicial en UI no bloqueante mientras consulta
+    switchEl.disabled = true;
+    if (pill && icon && text && subtext) {
+        pill.className = 'status-pill state-pending';
+        icon.textContent = 'sync';
+        text.textContent = 'Consultando estado...';
+        subtext.textContent = 'Conectando con el servidor para verificar novedades...';
+    }
 
     try {
-        const response = await fetch(`${NOTIFICATION_API_URL}?action=status`);
+        const response = await fetchWithTimeout(`${NOTIFICATION_API_URL}?action=status`, {}, 12000);
         if (!response.ok) {
             throw new Error(`Error de servidor (${response.status})`);
         }
@@ -62,15 +91,27 @@ async function fetchNotificationState() {
             currentState.updatedAt = formatTimestamp(data.updatedAt);
             
             updateUI(currentState.enabled, currentState.notificationId, currentState.updatedAt);
+            switchEl.disabled = false;
         } else {
+            if (pill && icon && text && subtext) {
+                pill.className = 'status-pill state-off';
+                icon.textContent = 'cloud_off';
+                text.textContent = 'Sin conexión';
+                subtext.textContent = 'No se pudo obtener el estado del servidor. Reintente recargando la página.';
+            }
             showToast(data.message || data.error || 'No se pudo obtener el estado del servidor', 'error');
+            switchEl.disabled = true;
         }
     } catch (err) {
         console.error('[Notificaciones] Error al consultar backend:', err);
+        if (pill && icon && text && subtext) {
+            pill.className = 'status-pill state-off';
+            icon.textContent = 'cloud_off';
+            text.textContent = 'Sin conexión';
+            subtext.textContent = 'No se pudo conectar con el servidor. Reintente recargando la página.';
+        }
         showToast('No se pudo conectar con el servidor. El estado no fue modificado.', 'error');
-    } finally {
-        showLoader(false);
-        switchEl.disabled = false;
+        switchEl.disabled = true;
     }
 }
 
@@ -103,7 +144,7 @@ async function handleSwitchToggle(event) {
         const action = targetState ? 'enable' : 'disable';
         const url = `${NOTIFICATION_API_URL}?action=${action}`;
         
-        const response = await fetch(url, { method: 'GET' });
+        const response = await fetchWithTimeout(url, { method: 'GET' }, 12000);
         if (!response.ok) {
             throw new Error(`HTTP Error ${response.status}`);
         }
@@ -118,12 +159,14 @@ async function handleSwitchToggle(event) {
             showToast(currentState.enabled ? 'Notificaciones activadas correctamente' : 'Notificaciones desactivadas', 'info');
         } else {
             // Revertir switch si el servidor rechazó la solicitud
-            event.target.checked = !targetState;
+            event.target.checked = currentState.enabled;
+            updateUI(currentState.enabled, currentState.notificationId, currentState.updatedAt);
             showToast(data.message || data.error || 'No se pudo guardar el cambio', 'error');
         }
     } catch (err) {
         console.error('[Notificaciones] Error al actualizar estado:', err);
-        event.target.checked = !targetState;
+        event.target.checked = currentState.enabled;
+        updateUI(currentState.enabled, currentState.notificationId, currentState.updatedAt);
         showToast('No se pudo conectar con el servidor. El estado no fue modificado.', 'error');
     } finally {
         showLoader(false);

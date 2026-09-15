@@ -67,11 +67,11 @@
 
                 <!-- Status Visual Indicator -->
                 <div class="status-indicator-box">
-                    <div id="status-pill" class="status-pill state-off">
-                        <span id="status-icon" class="material-symbols-outlined">notifications_off</span>
-                        <span id="status-text">Notificaciones desactivadas</span>
+                    <div id="status-pill" class="status-pill state-pending">
+                        <span id="status-icon" class="material-symbols-outlined">sync</span>
+                        <span id="status-text">Consultando estado...</span>
                     </div>
-                    <p id="status-subtext" class="status-subtext">El indicador visual de novedades estará oculto para los afiliados.</p>
+                    <p id="status-subtext" class="status-subtext">Conectando con el servidor para verificar novedades...</p>
                 </div>
             </div>
 
@@ -90,7 +90,7 @@
             <!-- Loading overlay inside card -->
             <div id="card-loader" class="card-loader" style="display: none;">
                 <div class="spinner"></div>
-                <span>Actualizando estado...</span>
+                <span>Guardando cambios...</span>
             </div>
 
             <footer class="card-footer">
