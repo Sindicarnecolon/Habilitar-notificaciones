@@ -51,6 +51,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
     try {
         const response = await fetch(url, {
             ...options,
+            credentials: 'omit',
             signal: controller.signal
         });
         return response;
