@@ -45,7 +45,7 @@ async function initApp() {
 /**
  * Helper para peticiones con límite de tiempo (timeout) y manejo de cancelaciones
  */
-async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+async function fetchWithTimeout(url, options = {}, timeoutMs = 20000) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -79,40 +79,58 @@ async function fetchNotificationState() {
         subtext.textContent = 'Conectando con el servidor para verificar novedades...';
     }
 
-    try {
-        const response = await fetchWithTimeout(`${NOTIFICATION_API_URL}?action=status`, {}, 12000);
-        if (!response.ok) {
-            throw new Error(`Error de servidor (${response.status})`);
-        }
-        const data = await response.json();
-
-        if (data.success) {
-            currentState.enabled = Boolean(data.enabled);
-            currentState.notificationId = data.notificationId || 0;
-            currentState.updatedAt = formatTimestamp(data.updatedAt);
-            
-            updateUI(currentState.enabled, currentState.notificationId, currentState.updatedAt);
-            switchEl.disabled = false;
-        } else {
-            if (pill && icon && text && subtext) {
-                pill.className = 'status-pill state-off';
-                icon.textContent = 'cloud_off';
-                text.textContent = 'Sin conexión';
-                subtext.textContent = 'No se pudo obtener el estado del servidor. Reintente recargando la página.';
+    const maxAttempts = 2;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            const response = await fetchWithTimeout(`${NOTIFICATION_API_URL}?action=status`, {}, 20000);
+            if (!response.ok) {
+                throw new Error(`Error de servidor (${response.status})`);
             }
-            showToast(data.message || data.error || 'No se pudo obtener el estado del servidor', 'error');
-            switchEl.disabled = true;
+            const data = await response.json();
+
+            if (data.success) {
+                if (attempt > 1) {
+                    console.log('[Notificaciones] Backend recuperado en segundo intento.');
+                }
+                currentState.enabled = Boolean(data.enabled);
+                currentState.notificationId = data.notificationId || 0;
+                currentState.updatedAt = formatTimestamp(data.updatedAt);
+                
+                updateUI(currentState.enabled, currentState.notificationId, currentState.updatedAt);
+                switchEl.disabled = false;
+                return;
+            } else {
+                if (pill && icon && text && subtext) {
+                    pill.className = 'status-pill state-off';
+                    icon.textContent = 'cloud_off';
+                    text.textContent = 'Sin conexión';
+                    subtext.textContent = 'No se pudo obtener el estado del servidor. Reintente recargando la página.';
+                }
+                showToast(data.message || data.error || 'No se pudo obtener el estado del servidor', 'error');
+                switchEl.disabled = true;
+                return;
+            }
+        } catch (err) {
+            if (attempt === 1) {
+                if (err.name === 'AbortError') {
+                    console.warn('[Notificaciones] Primera consulta agotó timeout; reintentando...');
+                } else {
+                    console.warn('[Notificaciones] Error en primera consulta (' + err.message + '); reintentando...');
+                }
+                // Pausa breve y determinista de 1 segundo antes del único reintento
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            } else {
+                console.error('[Notificaciones] Error al consultar backend (reintento agotado):', err);
+                if (pill && icon && text && subtext) {
+                    pill.className = 'status-pill state-off';
+                    icon.textContent = 'cloud_off';
+                    text.textContent = 'Sin conexión';
+                    subtext.textContent = 'No se pudo conectar con el servidor. Reintente recargando la página.';
+                }
+                showToast('No se pudo conectar con el servidor. El estado no fue modificado.', 'error');
+                switchEl.disabled = true;
+            }
         }
-    } catch (err) {
-        console.error('[Notificaciones] Error al consultar backend:', err);
-        if (pill && icon && text && subtext) {
-            pill.className = 'status-pill state-off';
-            icon.textContent = 'cloud_off';
-            text.textContent = 'Sin conexión';
-            subtext.textContent = 'No se pudo conectar con el servidor. Reintente recargando la página.';
-        }
-        showToast('No se pudo conectar con el servidor. El estado no fue modificado.', 'error');
-        switchEl.disabled = true;
     }
 }
 
@@ -145,7 +163,7 @@ async function handleSwitchToggle(event) {
         const action = targetState ? 'enable' : 'disable';
         const url = `${NOTIFICATION_API_URL}?action=${action}`;
         
-        const response = await fetchWithTimeout(url, { method: 'GET' }, 12000);
+        const response = await fetchWithTimeout(url, { method: 'GET' }, 20000);
         if (!response.ok) {
             throw new Error(`HTTP Error ${response.status}`);
         }
