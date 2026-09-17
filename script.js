@@ -92,6 +92,7 @@ async function fetchNotificationState() {
                 if (attempt > 1) {
                     console.log('[Notificaciones] Backend recuperado en segundo intento.');
                 }
+                hideToast();
                 currentState.enabled = Boolean(data.enabled);
                 currentState.notificationId = data.notificationId || 0;
                 currentState.updatedAt = formatTimestamp(data.updatedAt);
@@ -127,7 +128,7 @@ async function fetchNotificationState() {
                     text.textContent = 'Sin conexión';
                     subtext.textContent = 'No se pudo conectar con el servidor. Reintente recargando la página.';
                 }
-                showToast('No se pudo conectar con el servidor. El estado no fue modificado.', 'error');
+                showToast('No se pudo conectar con el servidor.', 'error');
                 switchEl.disabled = true;
             }
         }
@@ -274,4 +275,14 @@ function showToast(message, type = 'info') {
     toastTimeout = setTimeout(() => {
         toast.classList.remove('show');
     }, 3500);
+}
+
+function hideToast() {
+    const toast = document.getElementById('toast');
+
+    if (toast) {
+        toast.classList.remove('show');
+    }
+
+    clearTimeout(toastTimeout);
 }
