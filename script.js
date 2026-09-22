@@ -163,31 +163,51 @@ async function handleSwitchToggle(event) {
     try {
         const action = targetState ? 'enable' : 'disable';
         const url = `${NOTIFICATION_API_URL}?action=${action}`;
-        
-        const response = await fetchWithTimeout(url, { method: 'GET' }, 20000);
-        if (!response.ok) {
-            throw new Error(`HTTP Error ${response.status}`);
-        }
-        const data = await response.json();
 
-        if (data.success) {
-            currentState.enabled = Boolean(data.enabled);
-            currentState.notificationId = data.notificationId;
-            currentState.updatedAt = formatTimestamp(data.updatedAt);
+        const maxAttempts = 2;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                const response = await fetchWithTimeout(url, { method: 'GET' }, 20000);
+                if (!response.ok) {
+                    throw new Error(`HTTP Error ${response.status}`);
+                }
+                const data = await response.json();
 
-            updateUI(currentState.enabled, currentState.notificationId, currentState.updatedAt);
-            showToast(currentState.enabled ? 'Notificaciones activadas correctamente' : 'Notificaciones desactivadas', 'info');
-        } else {
-            // Revertir switch si el servidor rechazó la solicitud
-            event.target.checked = currentState.enabled;
-            updateUI(currentState.enabled, currentState.notificationId, currentState.updatedAt);
-            showToast(data.message || data.error || 'No se pudo guardar el cambio', 'error');
+                if (data.success) {
+                    if (attempt > 1) {
+                        console.log('[Notificaciones] Estado actualizado en segundo intento.');
+                    }
+                    currentState.enabled = Boolean(data.enabled);
+                    currentState.notificationId = data.notificationId;
+                    currentState.updatedAt = formatTimestamp(data.updatedAt);
+
+                    updateUI(currentState.enabled, currentState.notificationId, currentState.updatedAt);
+                    showToast(currentState.enabled ? 'Notificaciones activadas correctamente' : 'Notificaciones desactivadas', 'info');
+                    return;
+                } else {
+                    // Revertir switch si el servidor rechazó la solicitud
+                    event.target.checked = currentState.enabled;
+                    updateUI(currentState.enabled, currentState.notificationId, currentState.updatedAt);
+                    showToast(data.message || data.error || 'No se pudo guardar el cambio', 'error');
+                    return;
+                }
+            } catch (err) {
+                if (attempt === 1) {
+                    if (err.name === 'AbortError') {
+                        console.warn('[Notificaciones] Primer intento de actualización agotó timeout; reintentando...');
+                    } else {
+                        console.warn('[Notificaciones] Error en primer intento de actualización (' + err.message + '); reintentando...');
+                    }
+                    // Pausa breve y determinista de 1 segundo antes del único reintento
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } else {
+                    console.error('[Notificaciones] Error al actualizar estado (reintento agotado):', err);
+                    event.target.checked = currentState.enabled;
+                    updateUI(currentState.enabled, currentState.notificationId, currentState.updatedAt);
+                    showToast('No se pudo conectar con el servidor. El estado no fue modificado.', 'error');
+                }
+            }
         }
-    } catch (err) {
-        console.error('[Notificaciones] Error al actualizar estado:', err);
-        event.target.checked = currentState.enabled;
-        updateUI(currentState.enabled, currentState.notificationId, currentState.updatedAt);
-        showToast('No se pudo conectar con el servidor. El estado no fue modificado.', 'error');
     } finally {
         showLoader(false);
         switchEl.disabled = false;
